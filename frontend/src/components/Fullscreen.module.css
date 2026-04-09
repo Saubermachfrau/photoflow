@@ -1,0 +1,199 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.15s ease;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.counter {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: rgba(255,255,255,0.4);
+  min-width: 60px;
+}
+
+.filename {
+  flex: 1;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  color: rgba(255,255,255,0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+  margin-right: 8px;
+}
+
+.star {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.2);
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.1s;
+  padding: 2px;
+}
+.star.starOn { color: #f0b429; }
+.star:hover { color: #f0b429; }
+
+.actionBtn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.actionBtn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.actionBtn.actionBtnRed { background: rgba(224,82,82,0.2); color: #e05252; border-color: rgba(224,82,82,0.3); }
+.actionBtn.actionBtnActive { background: rgba(79,142,247,0.2); color: #4f8ef7; border-color: rgba(79,142,247,0.3); }
+
+.closeBtn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-left: 4px;
+}
+.closeBtn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.imageArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.navBtn {
+  position: absolute;
+  z-index: 10;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.5);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+  backdrop-filter: blur(4px);
+}
+.navBtn:hover:not(:disabled) { background: rgba(255,255,255,0.15); color: #fff; }
+.navBtn:disabled { opacity: 0.2; cursor: not-allowed; }
+.navLeft { left: 16px; }
+.navRight { right: 16px; }
+
+.imageContainer {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  animation: fadeIn 0.15s ease;
+}
+
+.imageDeleted { opacity: 0.5; }
+
+.deleteIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #e05252;
+  background: rgba(0,0,0,0.5);
+  padding: 20px 28px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(224,82,82,0.3);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.exifSide {
+  position: absolute;
+  right: 0;
+  top: 53px;
+  bottom: 90px;
+  width: 280px;
+  z-index: 20;
+}
+
+/* Filmstrip */
+.filmstrip {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.85);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto;
+  flex-shrink: 0;
+  height: 80px;
+  align-items: center;
+}
+
+.filmstrip::-webkit-scrollbar { height: 3px; }
+.filmstrip::-webkit-scrollbar-track { background: transparent; }
+.filmstrip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+.filmItem {
+  width: 90px;
+  min-width: 90px;
+  height: 60px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.1s, opacity 0.1s;
+  opacity: 0.6;
+}
+.filmItem:hover { opacity: 0.9; }
+.filmItem.filmActive { border-color: var(--accent); opacity: 1; }
+.filmItem.filmDeleted { border-color: var(--red); opacity: 0.4; }
+
+.filmItem img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

@@ -1,0 +1,177 @@
+/* PhotoFlow - Global Styles & Theme System */
+
+/* ─── Fonts ─────────────────────────────────────────────────────────── */
+:root {
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-display: 'Playfair Display', Georgia, serif;
+}
+
+/* ─── Theme: Dark (default) ─────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-primary:    #0d0f12;
+  --bg-secondary:  #13161b;
+  --bg-tertiary:   #1a1e25;
+  --bg-elevated:   #21262f;
+  --bg-hover:      #2a3040;
+  --border:        #2e3542;
+  --border-subtle: #1e2530;
+  --text-primary:  #e8ecf2;
+  --text-secondary:#8b96a8;
+  --text-muted:    #4e5a6b;
+  --accent:        #4f8ef7;
+  --accent-hover:  #6ba3ff;
+  --accent-dim:    rgba(79,142,247,0.15);
+  --red:           #e05252;
+  --red-dim:       rgba(224,82,82,0.15);
+  --green:         #4caf7d;
+  --green-dim:     rgba(76,175,125,0.15);
+  --yellow:        #f0b429;
+  --yellow-dim:    rgba(240,180,41,0.15);
+  --purple:        #9b6cf7;
+  --scrollbar-bg:  #1a1e25;
+  --scrollbar-thumb: #2e3542;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:     0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* ─── Theme: Light ───────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary:    #f5f6f8;
+  --bg-secondary:  #ffffff;
+  --bg-tertiary:   #eef0f4;
+  --bg-elevated:   #ffffff;
+  --bg-hover:      #e8eaee;
+  --border:        #d8dce4;
+  --border-subtle: #eaecf0;
+  --text-primary:  #1a1e2e;
+  --text-secondary:#5a6478;
+  --text-muted:    #9aa0ae;
+  --accent:        #2563eb;
+  --accent-hover:  #1d4ed8;
+  --accent-dim:    rgba(37,99,235,0.1);
+  --red:           #dc2626;
+  --red-dim:       rgba(220,38,38,0.1);
+  --green:         #16a34a;
+  --green-dim:     rgba(22,163,74,0.1);
+  --yellow:        #d97706;
+  --yellow-dim:    rgba(217,119,6,0.1);
+  --purple:        #7c3aed;
+  --scrollbar-bg:  #eef0f4;
+  --scrollbar-thumb: #c4c9d4;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.1);
+  --shadow-lg:     0 8px 32px rgba(0,0,0,0.12);
+}
+
+/* ─── Theme: Dim ─────────────────────────────────────────────────────── */
+[data-theme="dim"] {
+  --bg-primary:    #1b1f27;
+  --bg-secondary:  #222834;
+  --bg-tertiary:   #282e3a;
+  --bg-elevated:   #2f3644;
+  --bg-hover:      #363d4e;
+  --border:        #3a4255;
+  --border-subtle: #2c3344;
+  --text-primary:  #d4dae6;
+  --text-secondary:#7d8a9e;
+  --text-muted:    #4a5568;
+  --accent:        #5b9cf6;
+  --accent-hover:  #74aeff;
+  --accent-dim:    rgba(91,156,246,0.15);
+  --red:           #e06060;
+  --red-dim:       rgba(224,96,96,0.15);
+  --green:         #56c28a;
+  --green-dim:     rgba(86,194,138,0.15);
+  --yellow:        #f2bc44;
+  --yellow-dim:    rgba(242,188,68,0.15);
+  --purple:        #a480f8;
+  --scrollbar-bg:  #222834;
+  --scrollbar-thumb: #3a4255;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg:     0 8px 32px rgba(0,0,0,0.5);
+}
+
+/* ─── Theme: Darkroom (Fotografen-Modus) ────────────────────────────── */
+[data-theme="darkroom"] {
+  --bg-primary:    #080808;
+  --bg-secondary:  #0f0f0f;
+  --bg-tertiary:   #141414;
+  --bg-elevated:   #1a1a1a;
+  --bg-hover:      #222222;
+  --border:        #2a2a2a;
+  --border-subtle: #1a1a1a;
+  --text-primary:  #cccccc;
+  --text-secondary:#666666;
+  --text-muted:    #3a3a3a;
+  --accent:        #cc4444;
+  --accent-hover:  #dd5555;
+  --accent-dim:    rgba(204,68,68,0.15);
+  --red:           #cc4444;
+  --red-dim:       rgba(204,68,68,0.15);
+  --green:         #448844;
+  --green-dim:     rgba(68,136,68,0.15);
+  --yellow:        #aa8833;
+  --yellow-dim:    rgba(170,136,51,0.15);
+  --purple:        #8855aa;
+  --scrollbar-bg:  #0f0f0f;
+  --scrollbar-thumb: #2a2a2a;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.6);
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.7);
+  --shadow-lg:     0 8px 32px rgba(0,0,0,0.8);
+}
+
+/* ─── Reset & Base ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+#root { height: 100vh; display: flex; flex-direction: column; }
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Utils ──────────────────────────────────────────────────────────── */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+button { cursor: pointer; font-family: var(--font-body); }
+input, textarea { font-family: var(--font-body); }
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+@keyframes shimmer {
+  0% { background-position: -200% 0 }
+  100% { background-position: 200% 0 }
+}
+
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
+.animate-fade-in { animation: fadeIn 0.2s ease; }
+.animate-slide-up { animation: slideUp 0.25s ease; }
+
+/* ─── Skeleton loader ────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
