@@ -1,13 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/appStore'
-import {
-  getCards, mountCard, unmountCard, scanCard, startCopy, getJob
-} from '../api/client'
-import {
-  CreditCard, RefreshCw, HardDrive, Upload, LogOut,
-  Camera, Film, CheckCircle, AlertCircle, Loader
-} from 'lucide-react'
+import { getCards, mountCard, unmountCard, scanCard, startCopy, getJob } from '../api/client'
+import { CreditCard, RefreshCw, HardDrive, Upload, LogOut, Camera, Film, CheckCircle, AlertCircle, Loader } from 'lucide-react'
 import ProgressBar from './ProgressBar'
 import styles from './CardsView.module.css'
 
@@ -17,7 +12,6 @@ export default function CardsView() {
   const [loading, setLoading] = useState(false)
   const [scanning, setScanning] = useState({})
   const [cardScans, setCardScans] = useState({})
-  const [copyJob, setCopyJob] = useState(null)
   const [copyProgress, setCopyProgress] = useState(null)
 
   const refresh = useCallback(async () => {
@@ -39,18 +33,20 @@ export default function CardsView() {
       const result = await mountCard(card.device)
       toast.success(result.message, { id: toastId })
       await refresh()
-      // Karte scannen
-      await handleScan(card.device, result.mount_point)
+      if (result.mount_point) {
+        await handleScan(card.device, result.mount_point)
+      }
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Mount fehlgeschlagen', { id: toastId })
     }
   }
 
   const handleUnmount = async (card) => {
-    const toastId = toast.loading(`Werfe aus…`)
+    const toastId = toast.loading('Werfe aus…')
     try {
       const result = await unmountCard(card.device)
       toast.success(result.message, { id: toastId })
+      setCardScans(s => { const n = {...s}; delete n[card.device]; return n })
       await refresh()
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Auswerfen fehlgeschlagen', { id: toastId })
@@ -63,44 +59,39 @@ export default function CardsView() {
     try {
       const scan = await scanCard(mountPoint)
       setCardScans(s => ({ ...s, [device]: { ...scan, mount_point: mountPoint } }))
-    } catch {}
+    } catch (e) {
+      toast.error('Scan fehlgeschlagen')
+    }
     setScanning(s => ({ ...s, [device]: false }))
   }
 
   const handleCopyPhotos = async (card) => {
     const scan = cardScans[card.device]
-    if (!scan) return toast.error('Karte zuerst scannen')
-
-    // Alle Fotos auf der Karte holen
+    if (!scan || scan.photo_count === 0) return toast.error('Keine Fotos gefunden')
     const toastId = toast.loading('Starte Kopiervorgang…')
     try {
-      // Vollständiger Scan
-      const fullScan = await scanCard(scan.mount_point)
-      const job = await startCopy(fullScan.photos, 'photos')
+      const job = await startCopy(scan.photos, 'photos')
       toast.success('Kopieren gestartet', { id: toastId })
       pollCopyJob(job.job_id, 'photos')
-    } catch (e) {
+    } catch {
       toast.error('Fehler beim Kopieren', { id: toastId })
     }
   }
 
   const handleCopyVideos = async (card) => {
     const scan = cardScans[card.device]
-    if (!scan) return toast.error('Karte zuerst scannen')
-
+    if (!scan || scan.video_count === 0) return toast.error('Keine Videos gefunden')
     const toastId = toast.loading('Starte Video-Kopiervorgang…')
     try {
-      const fullScan = await scanCard(scan.mount_point)
-      const job = await startCopy(fullScan.videos, 'videos')
+      const job = await startCopy(scan.videos, 'videos')
       toast.success('Videos werden kopiert', { id: toastId })
       pollCopyJob(job.job_id, 'videos')
-    } catch (e) {
+    } catch {
       toast.error('Fehler beim Kopieren', { id: toastId })
     }
   }
 
   const pollCopyJob = async (jobId, type) => {
-    setCopyJob(jobId)
     const interval = setInterval(async () => {
       try {
         const job = await getJob(jobId)
@@ -123,24 +114,33 @@ export default function CardsView() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <p className={styles.subtitle}>
-          Speicherkarte einstecken, mounten und Dateien kopieren
-        </p>
+        <p className={styles.subtitle}>Speicherkarte einstecken, mounten und Dateien kopieren</p>
         <button className={styles.refreshBtn} onClick={refresh} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Aktualisieren
         </button>
       </div>
 
-      {/* Kopier-Fortschritt */}
+      {/* Kopier-Fortschritt mit Restzeit */}
       {copyProgress && copyProgress.status === 'running' && (
         <div className={styles.progressSection}>
           <ProgressBar
             progress={copyProgress.progress}
             label={`Kopiere: ${copyProgress.current_file || '…'}`}
-            sub={`${copyProgress.copied || 0} / ${copyProgress.total || 0} Dateien`}
+            sub={`${copyProgress.copied || 0} / ${copyProgress.total || 0} Dateien · ${copyProgress.bytes_copied || ''} / ${copyProgress.bytes_total || ''}`}
+            eta={copyProgress.eta ? `Noch ${copyProgress.eta}` : ''}
+            speed={copyProgress.speed || ''}
             color="var(--accent)"
           />
+        </div>
+      )}
+
+      {/* Fertig-Meldung */}
+      {copyProgress && (copyProgress.status === 'done' || copyProgress.status === 'done_with_errors') && (
+        <div className={styles.doneBanner}>
+          <CheckCircle size={16} />
+          <span>{copyProgress.copied} Dateien kopiert in Ordner: <strong>{copyProgress.dest_folder}</strong></span>
+          <button className={styles.dismissBtn} onClick={() => setCopyProgress(null)}>✕</button>
         </div>
       )}
 
@@ -188,55 +188,34 @@ export default function CardsView() {
 
                 {scan && (
                   <div className={styles.scanResults}>
-                    <div className={styles.scanStat}>
-                      <Camera size={14} />
-                      <span>{scan.photo_count} Fotos</span>
-                    </div>
-                    <div className={styles.scanStat}>
-                      <Film size={14} />
-                      <span>{scan.video_count} Videos</span>
-                    </div>
+                    <div className={styles.scanStat}><Camera size={14} /><span>{scan.photo_count} Fotos</span></div>
+                    <div className={styles.scanStat}><Film size={14} /><span>{scan.video_count} Videos</span></div>
                   </div>
                 )}
 
                 <div className={styles.cardActions}>
                   {!card.mounted ? (
-                    <button
-                      className={`${styles.btn} ${styles.btnPrimary}`}
-                      onClick={() => handleMount(card)}
-                    >
+                    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => handleMount(card)}>
                       <Upload size={14} /> Mounten
                     </button>
                   ) : (
                     <>
                       {scan && scan.photo_count > 0 && (
-                        <button
-                          className={`${styles.btn} ${styles.btnAccent}`}
-                          onClick={() => handleCopyPhotos(card)}
-                        >
+                        <button className={`${styles.btn} ${styles.btnAccent}`} onClick={() => handleCopyPhotos(card)}>
                           <Camera size={14} /> {scan.photo_count} Fotos kopieren
                         </button>
                       )}
                       {scan && scan.video_count > 0 && (
-                        <button
-                          className={`${styles.btn} ${styles.btnGreen}`}
-                          onClick={() => handleCopyVideos(card)}
-                        >
+                        <button className={`${styles.btn} ${styles.btnGreen}`} onClick={() => handleCopyVideos(card)}>
                           <Film size={14} /> {scan.video_count} Videos → NAS
                         </button>
                       )}
                       {!scan && !isScan && (
-                        <button
-                          className={`${styles.btn} ${styles.btnSecondary}`}
-                          onClick={() => handleScan(card.device, card.mount_point)}
-                        >
+                        <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => handleScan(card.device, card.mount_point)}>
                           <RefreshCw size={14} /> Karte scannen
                         </button>
                       )}
-                      <button
-                        className={`${styles.btn} ${styles.btnDanger}`}
-                        onClick={() => handleUnmount(card)}
-                      >
+                      <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => handleUnmount(card)}>
                         <LogOut size={14} /> Auswerfen
                       </button>
                     </>
@@ -248,7 +227,6 @@ export default function CardsView() {
         </div>
       )}
 
-      {/* Hinweis */}
       <div className={styles.hint}>
         <AlertCircle size={14} />
         <span>Karten werden <strong>nie gelöscht</strong>. Fotos kommen zuerst auf die SSD (Staging), Videos direkt auf das NAS.</span>
