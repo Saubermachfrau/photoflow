@@ -1,19 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/appStore'
 import { listImages, deleteImages, updateTags, thumbnailUrl } from '../api/client'
 import {
-  Trash2, Star, ChevronRight, ChevronDown,
-  FolderOpen, LayoutGrid, Rows, Info, RotateCcw
+  Trash2, RotateCcw, FolderOpen, Info, CheckSquare, Square, X
 } from 'lucide-react'
 import ExifPanel from './ExifPanel'
 import styles from './CullingView.module.css'
 
 const GRID_SIZES = [
-  { id: 'lg', label: 'Groß', cols: 2 },
-  { id: 'md', label: 'Mittel', cols: 3 },
-  { id: 'sm', label: 'Klein', cols: 4 },
-  { id: 'xs', label: 'Übersicht', cols: 6 },
+  { id: 'lg', cols: 2, label: 'XL' },
+  { id: 'md', cols: 3, label: 'L' },
+  { id: 'sm', cols: 4, label: 'M' },
+  { id: 'xs', cols: 6, label: 'S' },
 ]
 
 export default function CullingView() {
@@ -44,18 +43,14 @@ export default function CullingView() {
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    loadImages(currentFolder)
-  }, [currentFolder])
+  useEffect(() => { loadImages(currentFolder) }, [currentFolder])
 
   const handleDeleteMarked = async () => {
     const toDelete = [...markedForDelete]
     if (!toDelete.length) return toast.error('Keine Bilder markiert')
-
     try {
       await deleteImages(toDelete)
       toast.success(`${toDelete.length} Bilder in Papierkorb verschoben`)
-      // Aus UI entfernen
       setImages(images.filter(img => !markedForDelete.has(img.path)))
       clearSelection()
     } catch {
@@ -66,7 +61,6 @@ export default function CullingView() {
   const handleDeleteSelected = async () => {
     const toDelete = [...selectedImages]
     if (!toDelete.length) return toast.error('Keine Bilder ausgewählt')
-
     try {
       await deleteImages(toDelete)
       toast.success(`${toDelete.length} Bilder entfernt`)
@@ -79,10 +73,10 @@ export default function CullingView() {
 
   const handleRating = async (path, rating) => {
     setRating(path, rating)
-    try {
-      await updateTags(path, [], rating)
-    } catch {}
+    try { await updateTags(path, [], rating) } catch {}
   }
+
+  const allSelected = images.length > 0 && selectedImages.size === images.length
 
   const filteredImages = filterRating > 0
     ? images.filter(img => (imageRatings[img.path] || 0) >= filterRating)
@@ -92,18 +86,18 @@ export default function CullingView() {
 
   return (
     <div className={styles.container}>
-      {/* Toolbar */}
+
+      {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div className={styles.toolbar}>
+
+        {/* Links: Ordner + Rating-Filter */}
         <div className={styles.toolbarLeft}>
-          {/* Ordner-Navigation */}
           {folders.length > 0 && (
             <div className={styles.folderNav}>
               <button
                 className={`${styles.folderBtn} ${currentFolder === '' ? styles.folderActive : ''}`}
                 onClick={() => setCurrentFolder('')}
-              >
-                Alle
-              </button>
+              >Alle</button>
               {folders.map(f => (
                 <button
                   key={f.path}
@@ -117,7 +111,6 @@ export default function CullingView() {
             </div>
           )}
 
-          {/* Rating-Filter */}
           <div className={styles.filterRow}>
             <span className={styles.filterLabel}>Filter:</span>
             {[0,1,2,3,4,5].map(r => (
@@ -132,7 +125,9 @@ export default function CullingView() {
           </div>
         </div>
 
+        {/* Rechts: Aktionen */}
         <div className={styles.toolbarRight}>
+
           {/* Grid-Größe */}
           <div className={styles.gridSizeGroup}>
             {GRID_SIZES.map(g => (
@@ -141,44 +136,51 @@ export default function CullingView() {
                 className={`${styles.gridSizeBtn} ${gridSize === g.id ? styles.gridSizeActive : ''}`}
                 onClick={() => setGridSize(g.id)}
                 title={g.label}
-              >
-                {g.id === 'lg' ? '⬛' : g.id === 'md' ? '▪▪' : g.id === 'sm' ? '▫▫▫' : '···'}
-              </button>
+              >{g.label}</button>
             ))}
           </div>
 
+          {/* Alles auswählen / abwählen */}
+          <button
+            className={`${styles.actionBtn} ${allSelected ? styles.actionBtnActive : ''}`}
+            onClick={allSelected ? clearSelection : selectAll}
+            title="Alle auswählen (Ctrl+A)"
+          >
+            {allSelected
+              ? <><CheckSquare size={14} /> Alle abwählen</>
+              : <><Square size={14} /> Alle auswählen</>
+            }
+          </button>
+
+          {/* Auswahl löschen */}
+          {selectedImages.size > 0 && (
+            <button className={styles.actionBtnDanger} onClick={handleDeleteSelected}>
+              <Trash2 size={14} />
+              {selectedImages.size} Auswahl löschen
+            </button>
+          )}
+
+          {/* Markierte löschen */}
           {markedForDelete.size > 0 && (
             <>
-              <button className={styles.undoBtn} onClick={undoDelete} title="Letztes rückgängig (Ctrl+Z)">
+              <button className={styles.undoBtn} onClick={undoDelete} title="Rückgängig (Ctrl+Z)">
                 <RotateCcw size={14} />
               </button>
-              <button className={styles.deleteMarkedBtn} onClick={handleDeleteMarked}>
+              <button className={styles.actionBtnRed} onClick={handleDeleteMarked}>
                 <Trash2 size={14} />
-                {markedForDelete.size} löschen
+                {markedForDelete.size} markierte löschen
               </button>
             </>
           )}
-          {selectedImages.size > 0 && (
-            <button className={styles.deleteSelectedBtn} onClick={handleDeleteSelected}>
-              <Trash2 size={14} />
-              Auswahl löschen
-            </button>
-          )}
-          <button
-            className={styles.selectAllBtn}
-            onClick={selectedImages.size > 0 ? clearSelection : selectAll}
-          >
-            {selectedImages.size > 0 ? 'Auswahl aufheben' : 'Alle auswählen'}
-          </button>
+
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Grid ────────────────────────────────────────────────── */}
       <div className={styles.content}>
-        {/* Grid */}
         <div className={styles.gridArea}>
           {loading ? (
-            <div className={styles.loadingGrid} style={{ '--cols': cols }}>
+            <div className={styles.grid} style={{ '--cols': cols }}>
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className={`${styles.skeletonCard} skeleton`} />
               ))}
@@ -216,24 +218,37 @@ export default function CullingView() {
         )}
       </div>
 
-      {/* Status Bar */}
+      {/* ── Status Bar ──────────────────────────────────────────── */}
       <div className={styles.statusBar}>
         <span>{filteredImages.length} Bilder</span>
-        {selectedImages.size > 0 && <span>· {selectedImages.size} ausgewählt</span>}
-        {markedForDelete.size > 0 && (
-          <span style={{ color: 'var(--red)' }}>· {markedForDelete.size} zum Löschen</span>
+        {selectedImages.size > 0 && (
+          <span style={{ color: 'var(--accent)' }}>· {selectedImages.size} ausgewählt</span>
         )}
-        <span className={styles.shortcutHint}>F = Vollbild · X/Del = Löschen · 1-5 = Bewertung · Ctrl+Z = Rückgängig</span>
+        {markedForDelete.size > 0 && (
+          <span style={{ color: 'var(--red)' }}>· {markedForDelete.size} zum Löschen markiert</span>
+        )}
+        <span className={styles.shortcutHint}>
+          Klick = auswählen · Doppelklick = Vollbild · X = löschen markieren · 1-5 = Bewertung · Ctrl+Z = Rückgängig
+        </span>
       </div>
     </div>
   )
 }
 
-function ImageCard({ img, index, selected, markedDelete, rating, onSelect, onMarkDelete, onOpenFullscreen, onRating, onShowExif }) {
+/* ── ImageCard ──────────────────────────────────────────────────────────── */
+function ImageCard({ img, selected, markedDelete, rating, onSelect, onMarkDelete, onOpenFullscreen, onRating, onShowExif }) {
   const [hovered, setHovered] = useState(false)
   const [imgError, setImgError] = useState(false)
 
   const thumb = thumbnailUrl(img.path, 400)
+
+  const handleClick = (e) => {
+    // Einfacher Klick = auswählen
+    // Doppelklick = Vollbild (wird separat behandelt)
+    if (e.detail === 1) {
+      onSelect()
+    }
+  }
 
   return (
     <div
@@ -244,12 +259,18 @@ function ImageCard({ img, index, selected, markedDelete, rating, onSelect, onMar
       `}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onDoubleClick={onOpenFullscreen}
     >
-      {/* Bild */}
-      <div className={styles.imgWrapper}>
+      {/* Bild – Klick = auswählen, Doppelklick = Vollbild */}
+      <div
+        className={styles.imgWrapper}
+        onClick={handleClick}
+        onDoubleClick={onOpenFullscreen}
+      >
         {imgError ? (
-          <div className={styles.imgError}>?</div>
+          <div className={styles.imgError}>
+            <span>?</span>
+            <span className={styles.imgErrorName}>{img.name}</span>
+          </div>
         ) : (
           <img
             src={thumb}
@@ -257,40 +278,46 @@ function ImageCard({ img, index, selected, markedDelete, rating, onSelect, onMar
             className={styles.img}
             loading="lazy"
             onError={() => setImgError(true)}
-            onClick={onSelect}
           />
         )}
 
-        {/* Overlay bei Hover */}
-        {hovered && (
+        {/* Hover-Overlay */}
+        {hovered && !markedDelete && (
           <div className={styles.overlay}>
-            <button className={styles.overlayBtn} onClick={onOpenFullscreen} title="Vollbild (F)">
-              ⛶
-            </button>
-            <button className={styles.overlayBtn} onClick={onShowExif} title="EXIF-Info (I)">
-              <Info size={13} />
-            </button>
+            <button
+              className={styles.overlayBtn}
+              onClick={(e) => { e.stopPropagation(); onOpenFullscreen() }}
+              title="Vollbild"
+            >⛶</button>
+            <button
+              className={styles.overlayBtn}
+              onClick={(e) => { e.stopPropagation(); onShowExif() }}
+              title="EXIF-Info"
+            ><Info size={13} /></button>
           </div>
         )}
 
-        {/* Delete Markierung */}
+        {/* Löschen-Overlay */}
         {markedDelete && (
           <div className={styles.deleteOverlay}>
-            <Trash2 size={24} />
+            <Trash2 size={28} />
+            <span>Zum Löschen</span>
           </div>
         )}
 
-        {/* Auswahl Checkbox */}
+        {/* Auswahl-Checkbox oben links */}
         <div
           className={`${styles.checkbox} ${selected ? styles.checkboxChecked : ''}`}
           onClick={(e) => { e.stopPropagation(); onSelect() }}
         >
-          {selected && '✓'}
+          {selected && <X size={10} strokeWidth={3} />}
         </div>
 
-        {/* RAW Badge */}
+        {/* RAW Badge oben rechts */}
         {img.is_raw && (
-          <span className={styles.rawBadge}>{img.ext.replace('.', '').toUpperCase()}</span>
+          <span className={styles.rawBadge}>
+            {img.ext.replace('.', '').toUpperCase()}
+          </span>
         )}
       </div>
 
@@ -305,11 +332,11 @@ function ImageCard({ img, index, selected, markedDelete, rating, onSelect, onMar
                 key={s}
                 className={`${styles.star} ${s <= rating ? styles.starFilled : ''}`}
                 onClick={(e) => { e.stopPropagation(); onRating(s) }}
-              >
-                ★
-              </button>
+                title={`${s} Stern${s > 1 ? 'e' : ''}`}
+              >★</button>
             ))}
           </div>
+          {/* Löschen-Button */}
           <button
             className={`${styles.deleteBtn} ${markedDelete ? styles.deleteBtnActive : ''}`}
             onClick={(e) => { e.stopPropagation(); onMarkDelete() }}
