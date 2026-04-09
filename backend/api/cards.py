@@ -4,6 +4,7 @@ Erkennen, mounten, unmounten über udisks2
 """
 import asyncio
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -34,6 +35,10 @@ def bytes_to_human(b: int) -> str:
         b /= 1024
     return f"{b:.1f} TB"
 
+def is_valid_device(device: str) -> bool:
+    """Prüft ob das Gerät ein gültiges Block-Device ist (sda-sdz oder mmcblk)"""
+    return bool(re.match(r'^/dev/(sd[a-z][0-9]?|mmcblk[0-9]+p?[0-9]*)$', device))
+
 @router.get("/", response_model=List[CardInfo])
 async def list_cards():
     """Alle angeschlossenen USB-Speichergeräte auflisten"""
@@ -41,13 +46,13 @@ async def list_cards():
         result = run_cmd([
             "lsblk", "-J", "-o", "NAME,SIZE,LABEL,FSTYPE,MOUNTPOINT,HOTPLUG,RM,TYPE,TRAN"
         ], check=False)
-        
+
         if result.returncode != 0:
             return []
-        
+
         data = json.loads(result.stdout)
         cards = []
-        
+
         for device in data.get("blockdevices", []):
             # Nur USB-Geräte (hotplug oder removable)
             is_usb = device.get("tran") == "usb" or device.get("hotplug") or device.get("rm")
@@ -55,12 +60,11 @@ async def list_cards():
                 continue
             if device.get("type") != "disk":
                 continue
-            
+
             # Partitionen verarbeiten
             children = device.get("children", [])
-            
+
             if not children:
-                # Gerät ohne Partitionen
                 size_str = device.get("size", "0")
                 cards.append(CardInfo(
                     device=f"/dev/{device['name']}",
@@ -86,63 +90,93 @@ async def list_cards():
                         mount_point=mount,
                         filesystem=part.get("fstype") or "unknown"
                     ))
-        
+
         return cards
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fehler beim Lesen der Geräte: {str(e)}")
 
 @router.post("/mount")
 async def mount_card(req: MountRequest):
-    """Karte mounten (schreibgeschützt für Sicherheit)"""
+    """Karte mounten"""
     device = req.device
-    
-    # Sicherheitscheck: nur /dev/sd* und /dev/mmcblk* erlauben
-    import re
-    if not re.match(r'^/dev/(sd[b-z][0-9]?|mmcblk[0-9]+p?[0-9]*)$', device):
-        raise HTTPException(status_code=400, detail="Ungültiges Gerät")
-    
+
+    if not is_valid_device(device):
+        raise HTTPException(status_code=400, detail=f"Ungültiges Gerät: {device}")
+
     # Prüfen ob bereits gemountet
     result = run_cmd(["lsblk", "-o", "MOUNTPOINT", "-n", device], check=False)
-    if result.stdout.strip():
-        mount_point = result.stdout.strip()
-        return {"success": True, "mount_point": mount_point, "message": f"Bereits gemountet: {mount_point}"}
-    
-    # Mount mit udisksctl (sicher, als normaler User)
-    result = run_cmd(["udisksctl", "mount", "-b", device, "--no-user-interaction"], check=False)
-    
+    existing_mount = result.stdout.strip()
+    if existing_mount:
+        return {
+            "success": True,
+            "mount_point": existing_mount,
+            "message": f"Bereits gemountet: {existing_mount}"
+        }
+
+    # Mount mit udisksctl
+    result = run_cmd([
+        "udisksctl", "mount", "-b", device, "--no-user-interaction"
+    ], check=False)
+
     if result.returncode == 0:
-        # Mount-Punkt aus Output extrahieren
-        import re
         match = re.search(r'at (.+?)\.?\s*$', result.stdout)
-        mount_point = match.group(1) if match else "/media/unknown"
+        mount_point = match.group(1).strip() if match else "/media/unknown"
         return {
             "success": True,
             "mount_point": mount_point,
             "message": f"Karte gemountet: {mount_point}"
         }
     else:
+        # Fallback: mount als root versuchen
+        mount_point = f"/media/photoflow_{device.replace('/dev/', '')}"
+        Path(mount_point).mkdir(parents=True, exist_ok=True)
+        result2 = run_cmd(["mount", device, mount_point], check=False)
+        if result2.returncode == 0:
+            return {
+                "success": True,
+                "mount_point": mount_point,
+                "message": f"Karte gemountet: {mount_point}"
+            }
         raise HTTPException(
             status_code=500,
-            detail=f"Mount fehlgeschlagen: {result.stderr}"
+            detail=f"Mount fehlgeschlagen: {result.stderr or result2.stderr}"
         )
 
 @router.post("/unmount")
 async def unmount_card(req: MountRequest):
     """Karte sicher auswerfen"""
     device = req.device
-    
-    import re
-    if not re.match(r'^/dev/(sd[b-z][0-9]?|mmcblk[0-9]+p?[0-9]*)$', device):
-        raise HTTPException(status_code=400, detail="Ungültiges Gerät")
-    
-    result = run_cmd(["udisksctl", "unmount", "-b", device, "--no-user-interaction"], check=False)
-    
+
+    if not is_valid_device(device):
+        raise HTTPException(status_code=400, detail=f"Ungültiges Gerät: {device}")
+
+    # Aktuellen Mount-Punkt herausfinden
+    mp_result = run_cmd(["lsblk", "-o", "MOUNTPOINT", "-n", device], check=False)
+    mount_point = mp_result.stdout.strip()
+
+    # Erst mit udisksctl versuchen
+    result = run_cmd([
+        "udisksctl", "unmount", "-b", device, "--no-user-interaction"
+    ], check=False)
+
+    if result.returncode != 0:
+        # Fallback: umount direkt
+        if mount_point:
+            result = run_cmd(["umount", mount_point], check=False)
+        else:
+            result = run_cmd(["umount", device], check=False)
+
     if result.returncode == 0:
-        # Power-off für sicheres Entfernen
+        # Power-off für sicheres Entfernen (parent device)
         parent = re.sub(r'[0-9]+$', '', device)
-        run_cmd(["udisksctl", "power-off", "-b", parent, "--no-user-interaction"], check=False)
-        return {"success": True, "message": "Karte kann sicher entfernt werden ✓"}
+        run_cmd([
+            "udisksctl", "power-off", "-b", parent, "--no-user-interaction"
+        ], check=False)
+        return {
+            "success": True,
+            "message": "✓ Karte kann sicher entfernt werden"
+        }
     else:
         raise HTTPException(
             status_code=500,
@@ -152,16 +186,17 @@ async def unmount_card(req: MountRequest):
 @router.get("/scan/{mount_point:path}")
 async def scan_card(mount_point: str):
     """Karte scannen: Fotos und Videos zählen"""
+    # mount_point kommt ohne führenden Slash vom Router
     mp = Path(f"/{mount_point}")
     if not mp.exists():
-        raise HTTPException(status_code=404, detail="Mount-Punkt nicht gefunden")
-    
+        raise HTTPException(status_code=404, detail=f"Mount-Punkt nicht gefunden: {mp}")
+
     photo_exts = {'.arw', '.dng', '.jpg', '.jpeg', '.png', '.cr2', '.cr3', '.nef', '.raf'}
     video_exts = {'.mp4', '.mov', '.avi', '.mts', '.m2ts'}
-    
+
     photos = []
     videos = []
-    
+
     for f in mp.rglob("*"):
         if not f.is_file():
             continue
@@ -170,13 +205,21 @@ async def scan_card(mount_point: str):
             photos.append(str(f))
         elif ext in video_exts:
             videos.append(str(f))
-    
+
+    total_size = 0
+    for f in photos + videos:
+        try:
+            total_size += Path(f).stat().st_size
+        except:
+            pass
+
     return {
         "photo_count": len(photos),
         "video_count": len(videos),
-        "photos": photos[:5],  # Vorschau der ersten 5
-        "videos": videos[:5],
-        "total_size": sum(Path(f).stat().st_size for f in photos + videos if Path(f).exists())
+        "photos": photos,
+        "videos": videos,
+        "total_size": total_size,
+        "mount_point": str(mp)
     }
 
 def _parse_size(size_str: str) -> int:
@@ -184,7 +227,7 @@ def _parse_size(size_str: str) -> int:
     try:
         units = {"B": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
         size_str = size_str.strip().upper()
-        if size_str[-1] in units:
+        if size_str and size_str[-1] in units:
             return int(float(size_str[:-1]) * units[size_str[-1]])
         return int(size_str)
     except:
