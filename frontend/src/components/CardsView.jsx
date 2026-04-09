@@ -5,7 +5,7 @@ import {
   getCards, mountCard, unmountCard, scanCard, startCopy, getJob
 } from '../api/client'
 import {
-  CreditCard, RefreshCw, HardDrive, Upload, Eject,
+  CreditCard, RefreshCw, HardDrive, Upload, LogOut,
   Camera, Film, CheckCircle, AlertCircle, Loader
 } from 'lucide-react'
 import ProgressBar from './ProgressBar'
@@ -237,7 +237,7 @@ export default function CardsView() {
                         className={`${styles.btn} ${styles.btnDanger}`}
                         onClick={() => handleUnmount(card)}
                       >
-                        <Eject size={14} /> Auswerfen
+                        <LogOut size={14} /> Auswerfen
                       </button>
                     </>
                   )}
