@@ -1,41 +1,45 @@
 #!/bin/bash
 # PhotoFlow - Update Script
+# Auf dem Lenovo ausführen: sudo bash /opt/photoflow/scripts/update.sh
+
 set -e
-
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 log() { echo -e "${GREEN}[✓]${NC} $1"; }
-info() { echo -e "${CYAN}[i]${NC} $1"; }
-
-INSTALL_DIR="/opt/photoflow"
+info() { echo -e "${CYAN}[→]${NC} $1"; }
 
 if [ "$EUID" -ne 0 ]; then
-  echo "Bitte als root ausführen: sudo bash scripts/update.sh"
+  echo "Bitte als root: sudo bash /opt/photoflow/scripts/update.sh"
   exit 1
 fi
 
-echo -e "${BOLD}${CYAN}PhotoFlow Update${NC}"
-echo ""
-
-info "Service stoppen..."
+info "Stoppe Service..."
 systemctl stop photoflow
 
-info "Git pull..."
-cd "$INSTALL_DIR"
-git pull origin main
+info "Hole neueste Dateien von GitHub..."
+cd /opt/photoflow
+git config --global --add safe.directory /opt/photoflow
+git fetch origin main
+git reset --hard origin/main
 
-info "Python-Abhängigkeiten aktualisieren..."
+info "Python-Pakete aktualisieren..."
 source venv/bin/activate
 pip install -r backend/requirements.txt -q
 deactivate
 
-info "Frontend neu bauen..."
-cd "$INSTALL_DIR/frontend"
-npm install
+info "Frontend bauen..."
+cd /opt/photoflow/frontend
+npm install --silent
 npm run build
 
-info "Service starten..."
+info "Starte Service..."
 systemctl start photoflow
+sleep 2
 
-log "Update abgeschlossen!"
-SERVER_IP=$(hostname -I | awk '{print $1}')
-echo -e "  ${CYAN}http://$SERVER_IP:$(grep port /opt/photoflow/config.json | head -1 | grep -o '[0-9]*')${NC}"
+if systemctl is-active --quiet photoflow; then
+  log "PhotoFlow läuft!"
+  echo ""
+  echo -e "  Browser: ${CYAN}http://$(hostname -I | awk '{print $1}'):8080${NC}"
+else
+  echo "Fehler! Log:"
+  journalctl -u photoflow -n 20
+fi
